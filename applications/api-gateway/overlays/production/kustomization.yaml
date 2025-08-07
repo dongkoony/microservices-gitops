@@ -1,0 +1,74 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+metadata:
+  name: api-gateway-production
+  annotations:
+    config.kubernetes.io/local-config: "true"
+
+# 네임스페이스 설정
+namespace: elice-devops-prod
+
+# 베이스 리소스 참조
+resources:
+- ../../base
+- namespace.yaml
+- ingress.yaml
+- hpa.yaml
+- pdb.yaml
+- networkpolicy.yaml
+
+# 운영 환경 접두사
+namePrefix: prod-
+
+# 운영 환경용 레이블
+commonLabels:
+  environment: production
+  tier: production
+
+# 운영 환경용 어노테이션
+commonAnnotations:
+  app.kubernetes.io/environment: production
+  app.kubernetes.io/tier: production
+
+# 이미지 태그 오버라이드 (Jenkins CI/CD에서 업데이트)
+images:
+- name: localhost:5000/api-gateway
+  newTag: prod-v1.0.0
+
+# 운영 환경 설정
+configMapGenerator:
+- name: api-gateway-env
+  behavior: merge
+  literals:
+  - ENVIRONMENT=production
+  - LOG_LEVEL=WARN
+  - REPLICAS=3
+  - DEBUG_MODE=false
+
+# 운영 환경 리소스 패치
+patchesStrategicMerge:
+- deployment-patch.yaml
+
+# 운영 환경용 고사양 리소스
+patchesJson6902:
+- target:
+    version: v1
+    kind: Deployment
+    name: api-gateway
+  patch: |-
+    - op: replace
+      path: /spec/replicas
+      value: 3
+    - op: replace
+      path: /spec/template/spec/containers/0/resources/requests/memory
+      value: "512Mi"
+    - op: replace
+      path: /spec/template/spec/containers/0/resources/requests/cpu
+      value: "500m"
+    - op: replace
+      path: /spec/template/spec/containers/0/resources/limits/memory
+      value: "2Gi"
+    - op: replace
+      path: /spec/template/spec/containers/0/resources/limits/cpu
+      value: "2000m"

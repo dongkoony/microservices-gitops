@@ -1,0 +1,33 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api-gateway
+spec:
+  replicas: 1
+  template:
+    spec:
+      containers:
+      - name: api-gateway
+        env:
+        - name: ENVIRONMENT
+          value: "dev"
+        - name: LOG_LEVEL
+          value: "DEBUG"
+        - name: DEBUG_MODE
+          value: "true"
+        - name: DATABASE_URL
+          value: "postgresql://elice_user:elice_password@postgres:5432/elice_dev_db"
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "256Mi"
+            cpu: "200m"
+        # 개발환경용 볼륨 마운트 (로그 확인용)
+        volumeMounts:
+        - name: app-logs
+          mountPath: /app/logs
+      volumes:
+      - name: app-logs
+        emptyDir: {}

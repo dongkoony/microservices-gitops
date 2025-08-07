@@ -1,0 +1,42 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+metadata:
+  name: api-gateway-base
+  annotations:
+    config.kubernetes.io/local-config: "true"
+
+# 공통 레이블
+commonLabels:
+  app: api-gateway
+  component: microservice
+  part-of: elice-devops
+
+# 공통 어노테이션
+commonAnnotations:
+  app.kubernetes.io/name: api-gateway
+  app.kubernetes.io/part-of: elice-microservices
+  app.kubernetes.io/managed-by: argocd
+
+# 리소스 목록
+resources:
+- deployment.yaml
+- service.yaml
+- configmap.yaml
+
+# 이미지 설정 (Kustomize로 오버라이드 가능)
+images:
+- name: localhost:5000/api-gateway
+  newTag: latest
+
+# 네임스페이스 접두사 (오버레이에서 설정)
+# namePrefix: 
+# nameSuffix: 
+
+# 공통 환경변수 (기본값)
+configMapGenerator:
+- name: api-gateway-env
+  literals:
+  - PORT=8080
+  - LOG_LEVEL=INFO
+  - METRICS_ENABLED=true

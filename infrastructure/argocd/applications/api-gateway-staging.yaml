@@ -1,0 +1,60 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: api-gateway-staging
+  namespace: argocd
+  labels:
+    app.kubernetes.io/name: api-gateway-staging
+    app.kubernetes.io/part-of: elice-microservices
+    environment: staging
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+    notifications.argoproj.io/subscribe.on-deployed.slack: elice-deployments
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: elice-microservices-staging
+  
+  source:
+    repoURL: https://github.com/dongkoony/microservices-gitops
+    targetRevision: main
+    path: applications/api-gateway/overlays/staging
+  
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: elice-devops-stg
+  
+  syncPolicy:
+    # 스테이징 환경은 수동 동기화 (승인 필요)
+    syncOptions:
+      - CreateNamespace=true
+      - PruneLast=true
+      - PrunePropagationPolicy=foreground
+      - Replace=false
+    retry:
+      limit: 3
+      backoff:
+        duration: 10s
+        factor: 2
+        maxDuration: 5m
+  
+  revisionHistoryLimit: 20
+  
+  ignoreDifferences:
+  - group: apps
+    kind: Deployment
+    jsonPointers:
+    - /spec/replicas
+  - group: autoscaling
+    kind: HorizontalPodAutoscaler
+    jsonPointers:
+    - /spec/minReplicas
+    - /spec/maxReplicas
+  
+  info:
+  - name: Environment
+    value: Staging
+  - name: Approval Required
+    value: "true"
+  - name: Documentation
+    value: https://github.com/dongkoony/microservices-gitops/wiki/api-gateway

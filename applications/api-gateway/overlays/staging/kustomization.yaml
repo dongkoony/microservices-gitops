@@ -1,0 +1,72 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+metadata:
+  name: api-gateway-staging
+  annotations:
+    config.kubernetes.io/local-config: "true"
+
+# 네임스페이스 설정
+namespace: elice-devops-stg
+
+# 베이스 리소스 참조
+resources:
+- ../../base
+- namespace.yaml
+- ingress.yaml
+- hpa.yaml
+
+# 스테이징 환경 접두사
+namePrefix: stg-
+
+# 스테이징 환경용 레이블
+commonLabels:
+  environment: staging
+  tier: staging
+
+# 스테이징 환경용 어노테이션
+commonAnnotations:
+  app.kubernetes.io/environment: staging
+  app.kubernetes.io/tier: staging
+
+# 이미지 태그 오버라이드 (Jenkins CI/CD에서 업데이트)
+images:
+- name: localhost:5000/api-gateway
+  newTag: stg-latest
+
+# 스테이징 환경 설정
+configMapGenerator:
+- name: api-gateway-env
+  behavior: merge
+  literals:
+  - ENVIRONMENT=staging
+  - LOG_LEVEL=INFO
+  - REPLICAS=2
+  - DEBUG_MODE=false
+
+# 스테이징 환경 리소스 패치
+patchesStrategicMerge:
+- deployment-patch.yaml
+
+# 스테이징 환경용 리소스 조정
+patchesJson6902:
+- target:
+    version: v1
+    kind: Deployment
+    name: api-gateway
+  patch: |-
+    - op: replace
+      path: /spec/replicas
+      value: 2
+    - op: replace
+      path: /spec/template/spec/containers/0/resources/requests/memory
+      value: "256Mi"
+    - op: replace
+      path: /spec/template/spec/containers/0/resources/requests/cpu
+      value: "250m"
+    - op: replace
+      path: /spec/template/spec/containers/0/resources/limits/memory
+      value: "1Gi"
+    - op: replace
+      path: /spec/template/spec/containers/0/resources/limits/cpu
+      value: "1000m"

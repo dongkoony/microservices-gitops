@@ -1,0 +1,49 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: api-gateway-config
+  labels:
+    app: api-gateway
+    service: api-gateway
+data:
+  # 애플리케이션 설정
+  app.properties: |
+    # API Gateway 설정
+    server.port=8080
+    server.host=0.0.0.0
+    
+    # 로깅 설정
+    logging.level=INFO
+    logging.format=json
+    
+    # 메트릭 설정
+    metrics.enabled=true
+    metrics.path=/metrics
+    
+    # 헬스 체크 설정
+    health.check.enabled=true
+    health.check.path=/health
+  
+  # 환경별 라우팅 설정 (기본값)
+  routing.yaml: |
+    services:
+      auth-service:
+        url: http://auth-service:8080
+        timeout: 30s
+      user-service:
+        url: http://user-service:8080
+        timeout: 30s
+      product-service:
+        url: http://product-service:8080
+        timeout: 30s
+    
+    routes:
+      - path: "/api/v1/auth/*"
+        service: auth-service
+        methods: ["GET", "POST", "PUT", "DELETE"]
+      - path: "/api/v1/users/*"
+        service: user-service
+        methods: ["GET", "POST", "PUT", "DELETE"]
+      - path: "/api/v1/products/*"
+        service: product-service
+        methods: ["GET", "POST", "PUT", "DELETE"]

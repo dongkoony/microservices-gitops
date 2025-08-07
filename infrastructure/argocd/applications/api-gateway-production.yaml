@@ -1,0 +1,73 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: api-gateway-production
+  namespace: argocd
+  labels:
+    app.kubernetes.io/name: api-gateway-production
+    app.kubernetes.io/part-of: elice-microservices
+    environment: production
+    criticality: high
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+    notifications.argoproj.io/subscribe.on-deployed.slack: elice-production-alerts
+    notifications.argoproj.io/subscribe.on-health-degraded.slack: elice-production-alerts
+    notifications.argoproj.io/subscribe.on-sync-failed.slack: elice-production-alerts
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: elice-microservices-production
+  
+  source:
+    repoURL: https://github.com/dongkoony/microservices-gitops
+    targetRevision: main
+    path: applications/api-gateway/overlays/production
+  
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: elice-devops-prod
+  
+  syncPolicy:
+    # 운영 환경은 완전 수동 동기화 (승인 + 확인 필요)
+    syncOptions:
+      - CreateNamespace=true
+      - PruneLast=true
+      - PrunePropagationPolicy=foreground
+      - Replace=false
+      - ApplyOutOfSyncOnly=true
+    retry:
+      limit: 1
+      backoff:
+        duration: 30s
+        factor: 1
+        maxDuration: 1m
+  
+  revisionHistoryLimit: 50
+  
+  ignoreDifferences:
+  - group: apps
+    kind: Deployment
+    jsonPointers:
+    - /spec/replicas
+  - group: autoscaling
+    kind: HorizontalPodAutoscaler
+    jsonPointers:
+    - /spec/minReplicas
+    - /spec/maxReplicas
+    - /status
+  - group: policy
+    kind: PodDisruptionBudget
+    jsonPointers:
+    - /status
+  
+  info:
+  - name: Environment
+    value: Production
+  - name: Approval Required
+    value: "true"
+  - name: Manual Sync Only
+    value: "true"
+  - name: Documentation
+    value: https://github.com/dongkoony/microservices-gitops/wiki/api-gateway
+  - name: Runbook
+    value: https://github.com/dongkoony/microservices-gitops/wiki/runbooks/api-gateway

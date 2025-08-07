@@ -1,0 +1,74 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+metadata:
+  name: api-gateway-dev
+  annotations:
+    config.kubernetes.io/local-config: "true"
+
+# 네임스페이스 설정
+namespace: elice-devops-dev
+
+# 베이스 리소스 참조
+resources:
+- ../../base
+
+# 개발 환경 특화 리소스
+- namespace.yaml
+- ingress.yaml
+
+# 환경별 접두사/접미사
+namePrefix: dev-
+nameSuffix: 
+
+# 개발 환경용 레이블
+commonLabels:
+  environment: dev
+  tier: development
+
+# 개발 환경용 어노테이션
+commonAnnotations:
+  app.kubernetes.io/environment: dev
+  app.kubernetes.io/tier: development
+
+# 이미지 태그 오버라이드 (Jenkins CI/CD에서 업데이트)
+images:
+- name: localhost:5000/api-gateway
+  newTag: dev-latest
+
+# 개발 환경 설정 오버라이드
+configMapGenerator:
+- name: api-gateway-env
+  behavior: merge
+  literals:
+  - ENVIRONMENT=dev
+  - LOG_LEVEL=DEBUG
+  - REPLICAS=1
+  - DEBUG_MODE=true
+
+# 리소스 패치 (개발환경용 조정)
+patchesStrategicMerge:
+- deployment-patch.yaml
+
+# JSON 패치 (세밀한 조정)
+patchesJson6902:
+- target:
+    version: v1
+    kind: Deployment
+    name: api-gateway
+  patch: |-
+    - op: replace
+      path: /spec/replicas
+      value: 1
+    - op: replace
+      path: /spec/template/spec/containers/0/resources/requests/memory
+      value: "128Mi"
+    - op: replace
+      path: /spec/template/spec/containers/0/resources/requests/cpu
+      value: "100m"
+    - op: replace
+      path: /spec/template/spec/containers/0/resources/limits/memory
+      value: "256Mi"
+    - op: replace
+      path: /spec/template/spec/containers/0/resources/limits/cpu
+      value: "200m"
